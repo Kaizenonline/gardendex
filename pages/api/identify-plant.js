@@ -14,6 +14,10 @@ export default async function handler(req, res) {
   // ── Credit check ──────────────────────────────────────────────────────────
   if (userId) {
     const db = supabaseAdmin();
+    if (!db) {
+      // Supabase not configured yet — allow scan without credit check
+      console.log("Supabase not configured, skipping credit check");
+    } else {
     const { data: canScan, error } = await db.rpc("spend_credit", { p_user_id: userId });
 
     if (error) {

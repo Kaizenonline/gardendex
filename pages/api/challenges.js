@@ -43,6 +43,7 @@ export default async function handler(req, res) {
   if (!token) return res.status(401).json({ error: "Unauthorized" });
 
   const db = supabaseAdmin();
+  if (!db) return res.status(503).json({ error: "Database not configured" });
   const { data: { user }, error: authError } = await db.auth.getUser(token);
   if (authError || !user) return res.status(401).json({ error: "Invalid token" });
 

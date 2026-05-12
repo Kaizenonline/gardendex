@@ -6,6 +6,8 @@ import { stripe, CREDIT_PACKS, PRO_TIER } from "../../lib/stripe";
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
+  if (!stripe) return res.status(503).json({ error: "Payments not configured" });
+
   const { packId, userId, userEmail } = req.body;
   if (!packId || !userId) return res.status(400).json({ error: "packId and userId required" });
 
