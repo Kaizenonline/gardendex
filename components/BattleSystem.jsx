@@ -452,17 +452,24 @@ export default function BattleSystem({ plants, onUpdatePlant, onClose, dark, onR
         // Was the killing blow super effective?
         const lastAttack = lastEvents.find(e => e.type === "attack" && !e.missed);
         const superEffectiveKO = !dotKO && lastAttack?.mult >= 2;
+        // Collect all statuses the player applied this battle
+        const statusesApplied = new Set(
+          log
+            .filter(e => e.type === "attack" && e.newStatus && e.atkId === playerPlant?.id)
+            .map(e => e.newStatus)
+        );
         onAchievement({
           playerWon,
-          playerRarity:   playerPlant?.rarity,
-          opponentRarity: loser.rarity,
-          totalWins:      newTW,
-          rankReached:    getRank(newTW).rank,
+          playerRarity:    playerPlant?.rarity,
+          opponentRarity:  loser.rarity,
+          totalWins:       newTW,
+          rankReached:     getRank(newTW).rank,
           dotKO,
           dotType,
           superEffectiveKO,
           triggeredEvolution,
           triggeredChampion,
+          statusesApplied,
         });
       }
     }

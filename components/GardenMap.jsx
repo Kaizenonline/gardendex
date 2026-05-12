@@ -175,6 +175,10 @@ function BedGrid({ bed, plants, onDropPlant, onRemovePlant, onEditBed, onDeleteB
               const cellKey = `${r}-${c}`;
               const plantId = occupied(r, c);
               const plant   = plantId ? plants.find(p => p.id === plantId) : null;
+              // Auto-clean stale cell references (plant was deleted)
+              if (plantId && !plant) {
+                setTimeout(() => onRemovePlant(bed.id, cellKey), 0);
+              }
               const isOver  = dragOverCell === cellKey;
               const typeCol = plant ? (TYPE_THEMES[plant.type] || "#455a64") : null;
 

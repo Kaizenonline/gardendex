@@ -53,7 +53,16 @@ export default function DailyChallenge({ plants, onClose, onBattle, dark }) {
   const bd     = dark ? "#2a3e2a" : "#e0e0e0";
   const streak = dailyState?.streak || 0;
 
-  if (!opponent) return null;
+  if (!opponent || plants.length < 2) return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200, padding: 16 }} onClick={onClose}>
+      <div onClick={e => e.stopPropagation()} style={{ width: 340, background: dark ? "#141f14" : "#fffdf8", borderRadius: 20, border: "2px solid #e0e0e0", padding: "32px 28px", textAlign: "center", fontFamily: "system-ui,sans-serif" }}>
+        <div style={{ fontSize: 48, marginBottom: 12 }}>🌱</div>
+        <div style={{ fontSize: 16, fontWeight: 700, color: dark ? "#d4ecd4" : "#1a1a1a", marginBottom: 8 }}>Need more plants!</div>
+        <div style={{ fontSize: 13, color: dark ? "#5a7a5a" : "#666", marginBottom: 20 }}>Add at least 2 plants to your collection to unlock daily challenges.</div>
+        <button onClick={onClose} style={{ padding: "10px 24px", background: "#2e7d32", border: "none", borderRadius: 10, color: "#fff", fontSize: 13, fontWeight: 700, cursor: "pointer" }}>Got it</button>
+      </div>
+    </div>
+  );
 
   const bs = getBattleStats(opponent);
   const moves = ATTACKS[opponent.type] || ATTACKS.Other;

@@ -307,13 +307,14 @@ export default function TournamentMode({plants,onClose,onUpdatePlant,dark}){
             <div style={{display:"flex",gap:8,marginTop:4}}>
               <button onClick={()=>{
                 let r=[...rounds];let ri=currentRoundIdx;let mi=currentMatchIdx;
+                const winDelta={};const lossDelta={};
                 while(true){
                   const match=r[ri][mi];
                   const winner=quickSimulate(match.p1,match.p2);
                   const loser=match.p1.id===winner.id?match.p2:match.p1;
                   r=r.map((round,rIdx)=>rIdx!==ri?round:round.map((m,mIdx)=>mIdx!==mi?m:{...m,winner}));
-                  onUpdatePlant({...winner,wins:(winner.wins||0)+1});
-                  onUpdatePlant({...loser,losses:(loser.losses||0)+1});
+                  winDelta[winner.id]=(winDelta[winner.id]||0)+1;
+                  lossDelta[loser.id]=(lossDelta[loser.id]||0)+1;
                   const roundDone=r[ri].every(m=>m.winner);
                   if(roundDone){
                     const winners=r[ri].map(m=>m.winner);
@@ -325,6 +326,8 @@ export default function TournamentMode({plants,onClose,onUpdatePlant,dark}){
                   if(ri>=10)break;
                 }
                 setRounds(r);
+                Object.entries(winDelta).forEach(([id,n])=>{const p=plants.find(x=>x.id===id);if(p)onUpdatePlant({...p,wins:(p.wins||0)+n});});
+                Object.entries(lossDelta).forEach(([id,n])=>{const p=plants.find(x=>x.id===id);if(p)onUpdatePlant({...p,losses:(p.losses||0)+n});});
               }} style={{flex:1,padding:"10px 0",background:dark?"#1a2e1a":"#e8f5e9",border:`1px solid ${dark?"#2a3e2a":"#c8e6c9"}`,borderRadius:11,color:dark?"#7aaa7a":"#2e7d32",fontSize:12,fontWeight:700,cursor:"pointer"}}>
                 ⏭ Simulate All Remaining
               </button>
