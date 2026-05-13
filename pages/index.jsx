@@ -216,6 +216,7 @@ function PlantDetail({plant,onClose,onDelete,onUpdate,dark}) {
   };
   const TabBtn=({id,label})=><button onClick={()=>setTab(id)} style={{flex:1,padding:"9px 0",border:"none",borderRadius:10,background:tab===id?theme.primary:"transparent",color:tab===id?"#fff":textSecondary,fontSize:12,fontWeight:700,cursor:"pointer",transition:"all 0.15s"}}>{label}</button>;
   return (
+    <>
     <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.72)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:100,padding:20}} onClick={onClose}>
       <div onClick={e=>e.stopPropagation()} style={{width:480,maxHeight:"90vh",overflowY:"auto",background:bg,borderRadius:24,border:`3px solid ${overdue?"#e53935":rar.color}`,boxShadow:`0 20px 60px rgba(0,0,0,${dark?0.6:0.35}),${rar.glow}`,fontFamily:"system-ui,sans-serif"}}>
         <div style={{height:190,position:"relative",overflow:"hidden",background:dark?`linear-gradient(160deg,${theme.darkLight},${theme.primary}40)`:`linear-gradient(160deg,${theme.light},${theme.primary}30)`,borderRadius:"21px 21px 0 0"}}>
@@ -424,6 +425,7 @@ function PlantDetail({plant,onClose,onDelete,onUpdate,dark}) {
         setTab("journal");
       }}
     />}
+    </>
   );
 }
 
