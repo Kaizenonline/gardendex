@@ -1,7 +1,6 @@
 // pages/api/identify-plant.js
 // Secure server-side proxy — keeps ANTHROPIC_API_KEY off the browser.
-// Checks and decrements scan credits before calling Anthropic.
-// Uses web_search tool for richer, more accurate plant data.
+// Optionally checks and decrements scan credits when Supabase is configured.
 
 import { supabaseAdmin } from "../../lib/supabase";
 
@@ -10,30 +9,27 @@ export default async function handler(req, res) {
 
   const { imageBase64, imageMime, userId } = req.body;
   if (!imageBase64 || !imageMime) return res.status(400).json({ error: "imageBase64 and imageMime are required" });
+  if (!process.env.ANTHROPIC_API_KEY) return res.status(500).json({ error: "ANTHROPIC_API_KEY is not configured on the server" });
 
-  // ── Credit check ──────────────────────────────────────────────────────────
+  // ── Optional credit check (only runs when Supabase is configured + userId provided) ──
   if (userId) {
     const db = supabaseAdmin();
-    if (!db) {
-      // Supabase not configured yet — allow scan without credit check
-      console.log("Supabase not configured, skipping credit check");
-    } else {
-    const { data: canScan, error } = await db.rpc("spend_credit", { p_user_id: userId });
-
-    if (error) {
-      console.error("Credit check error:", error);
-      return res.status(500).json({ error: "Could not verify credits" });
-    }
-
-    if (!canScan) {
-      return res.status(402).json({
-        error: "out_of_credits",
-        message: "You have no scans remaining. Purchase more to continue.",
-      });
+    if (db) {
+      const { data: canScan, error } = await db.rpc("spend_credit", { p_user_id: userId });
+      if (error) {
+        console.error("Credit check error:", error);
+        return res.status(500).json({ error: "Could not verify credits" });
+      }
+      if (!canScan) {
+        return res.status(402).json({
+          error: "out_of_credits",
+          message: "You have no scans remaining. Purchase more to continue.",
+        });
+      }
     }
   }
-  // ── (userId omitted = dev/test mode — skips credit check) ─────────────────
 
+  // ── Identify the plant ────────────────────────────────────────────────────
   const prompt = `You are an expert botanist with access to web search. Analyze this plant image carefully.
 If helpful, search the web for accurate growing data, regional advice, or variety-specific information.
 Return ONLY a raw JSON object — no markdown, no backticks, no preamble:
@@ -67,7 +63,7 @@ Output raw JSON only.`;
         "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
+        model: "claude-sonnet-4-6",
         max_tokens: 1500,
         tools: [{ type: "web_search_20250305", name: "web_search" }],
         messages: [{
@@ -93,8 +89,15 @@ Output raw JSON only.`;
       .replace(/```json|```/g, "")
       .trim();
 
-    const plantData = JSON.parse(rawText);
-    return res.status(200).json({ plant: plantData });
+    let plant;
+    try {
+      plant = JSON.parse(rawText);
+    } catch (parseErr) {
+      console.error("Failed to parse plant JSON:", rawText.slice(0, 300));
+      return res.status(500).json({ error: "Could not parse plant identification response" });
+    }
+
+    return res.status(200).json({ plant });
 
   } catch (err) {
     console.error("Server error:", err);

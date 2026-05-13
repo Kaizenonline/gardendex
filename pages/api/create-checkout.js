@@ -34,9 +34,11 @@ export default async function handler(req, res) {
     };
 
     if (pack.isSubscription) {
+      const priceId = process.env.STRIPE_UNLIMITED_PRICE_ID;
+      if (!priceId) return res.status(503).json({ error: "Subscription pricing not configured" });
       sessionConfig.mode = "subscription";
       sessionConfig.line_items = [{
-        price: process.env.STRIPE_UNLIMITED_PRICE_ID,
+        price: priceId,
         quantity: 1,
       }];
       // Store userId in subscription metadata for renewal handling

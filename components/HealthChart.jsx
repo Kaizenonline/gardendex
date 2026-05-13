@@ -19,7 +19,7 @@ function computeHealthAt(daysSinceCare) {
 /** Build the full timeline of health data points */
 function buildTimeline(plant) {
   const now        = Date.now();
-  const added      = new Date(plant.dateAdded).getTime();
+  const added      = plant.dateAdded ? new Date(plant.dateAdded).getTime() : now - 864e5;
   const daysOld    = Math.max(1, Math.ceil((now - added) / 864e5));
   const journal    = (plant.journal || []).slice().sort(
     (a, b) => new Date(a.timestamp || a.ts) - new Date(b.timestamp || b.ts)

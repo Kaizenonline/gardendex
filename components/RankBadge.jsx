@@ -1,7 +1,7 @@
 // components/RankBadge.jsx
 // Displays current rank, progress to next rank, and a rank-up celebration modal.
 
-import { useState } from "react";
+
 import { RANKS, getRank, getNextRank, getProgressToNextRank } from "../lib/ranks";
 
 // ── Compact header badge ──────────────────────────────────────────────────────

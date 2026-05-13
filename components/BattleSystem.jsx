@@ -16,8 +16,8 @@ const TYPE_MATCHUPS = {
 };
 
 export function getBattleStats(plant) {
-  const { sunlight, water, difficulty } = plant.stats;
-  const v = plant.vigor;
+  const { sunlight=50, water=50, difficulty=50 } = plant.stats || {};
+  const v = plant.vigor || 50;
   const stage = getEvolutionStage(plant);
   const mult = EVOLUTION_CONFIG[stage].statMult;
   return {
@@ -364,6 +364,11 @@ export default function BattleSystem({ plants, onUpdatePlant, onClose, dark, onR
   const timerRef  = useRef(null);
   const arenaRef  = useRef(null);
 
+  // Cleanup interval on unmount
+  useEffect(() => {
+    return () => { if (timerRef.current) clearInterval(timerRef.current); };
+  }, []);
+
   // Auto-start battle if both preset plants provided (daily challenge flow)
   useEffect(() => {
     if (presetPlayer && presetOpponent) {
@@ -544,7 +549,6 @@ export default function BattleSystem({ plants, onUpdatePlant, onClose, dark, onR
 
   const pA = playerPlant, pB = opponentPlant;
   const intro = battleLog[0], curEntry = battleLog[logIdx];
-  const attacks = battleLog.slice(1, logIdx + 1).filter(e => e.type === "attack");
   const pctA = Math.max(0, hps.a / hps.maxA), pctB = Math.max(0, hps.b / hps.maxB);
   const colA = pctA > 0.5 ? "#43a047" : pctA > 0.25 ? "#f9a825" : "#e53935";
   const colB = pctB > 0.5 ? "#43a047" : pctB > 0.25 ? "#f9a825" : "#e53935";
@@ -639,7 +643,7 @@ export default function BattleSystem({ plants, onUpdatePlant, onClose, dark, onR
           <div style={{ fontSize: 13, fontWeight: 800, color: "#fff" }}>⚔️ {pA?.name} vs {pB?.name}</div>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             <button onClick={() => setShowPP(p => !p)} style={{ background: "rgba(255,255,255,0.15)", border: "none", borderRadius: 8, padding: "4px 10px", color: "#fff", fontSize: 10, fontWeight: 700, cursor: "pointer" }}>PP {showPP ? "▲" : "▼"}</button>
-            <select value={speed} onChange={e => { setSpeed(Number(e.target.value)); if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; runTimer(battleLog, logIdx); } }} style={{ fontSize: 11, padding: "3px 8px", borderRadius: 6, border: "none", background: "rgba(255,255,255,0.15)", color: "#fff", cursor: "pointer" }}>
+            <select value={speed} onChange={e => { setSpeed(Number(e.target.value)); if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; setTimeout(() => runTimer(battleLog, logIdx), 0); } }} style={{ fontSize: 11, padding: "3px 8px", borderRadius: 6, border: "none", background: "rgba(255,255,255,0.15)", color: "#fff", cursor: "pointer" }}>
               <option value={1000}>🐢 Slow</option>
               <option value={600}>⚡ Normal</option>
               <option value={200}>🚀 Fast</option>

@@ -2,9 +2,9 @@
 // Single-elimination tournament bracket for 4 or 8 plants.
 // Matches can be watched one-by-one or auto-simulated.
 
-import { useState, useCallback } from "react";
+import { useState } from "react";
 import { getBattleStats } from "./BattleSystem";
-import { ATTACKS, pickAttack, rolledMiss, rollStatus, applyStatusDot, rolledStunSkip } from "../lib/attacks";
+import { pickAttack, rolledMiss, rollStatus, applyStatusDot, rolledStunSkip } from "../lib/attacks";
 
 const TYPE_MATCHUPS = {
   Herb:{strong:["Flower","Succulent"],weak:["Tree","Fruit"]},
@@ -86,7 +86,7 @@ function BracketCard({plant,isWinner,isLoser,dark}){
 }
 
 // ── Main TournamentMode ───────────────────────────────────────────────────────
-export default function TournamentMode({plants,onClose,onUpdatePlant,dark}){
+export default function TournamentMode({plants,onClose,onUpdatePlant,onAchievement,dark}){
   const[phase,setPhase]=useState("setup");   // setup|bracket|watching|complete
   const[size,setSize]=useState(4);
   const[selected,setSelected]=useState([]);
@@ -94,8 +94,6 @@ export default function TournamentMode({plants,onClose,onUpdatePlant,dark}){
   const[currentRoundIdx,setCurrentRoundIdx]=useState(0);
   const[currentMatchIdx,setCurrentMatchIdx]=useState(0);
   const[champion,setChampion]=useState(null);
-  const[watching,setWatching]=useState(null);  // { p1, p2, roundIdx, matchIdx }
-  const[matchResult,setMatchResult]=useState(null);
 
   const bg=dark?"#141f14":"#fffdf8";
   const ts=dark?"#5a7a5a":"#666";
@@ -121,48 +119,9 @@ export default function TournamentMode({plants,onClose,onUpdatePlant,dark}){
     setPhase("bracket");
   };
 
-  const autoSimulateAll=()=>{
-    let r=buildBracket(selected);
-    let roundIdx=0;
-    while(true){
-      const currentRound=r[roundIdx];
-      const newRound=currentRound.map(match=>({...match,winner:quickSimulate(match.p1,match.p2)}));
-      r=[...r.slice(0,roundIdx),newRound,...r.slice(roundIdx+1)];
-      const winners=newRound.map(m=>m.winner);
-      if(winners.length===1){
-        setChampion(winners[0]);
-        setRounds(r);
-        setCurrentRoundIdx(roundIdx);
-        setCurrentMatchIdx(newRound.length);
-        setPhase("complete");
-        // Update win/loss counts
-        newRound.forEach(m=>{
-          onUpdatePlant({...m.winner,wins:(m.winner.wins||0)+1});
-          const loser=m.p1.id===m.winner.id?m.p2:m.p1;
-          onUpdatePlant({...loser,losses:(loser.losses||0)+1});
-        });
-        return;
-      }
-      r=[...r,winners.map((p,i)=>({p1:p,p2:winners[i+1]||p,winner:null})).filter((_,i)=>i%2===0)
-        .map((m,i)=>({p1:winners[i*2],p2:winners[i*2+1]||winners[i*2],winner:null}))];
-      r=[...r.slice(0,roundIdx+1),winners.reduce((acc,p,i)=>{
-        if(i%2===0)acc.push({p1:p,p2:winners[i+1],winner:null});
-        return acc;
-      },[])];
-      roundIdx++;
-    }
-  };
-
-  const watchMatch=(roundIdx,matchIdx)=>{
-    const match=rounds[roundIdx][matchIdx];
-    if(match.winner)return;
-    setWatching({p1:match.p1,p2:match.p2,roundIdx,matchIdx});
-    setMatchResult(null);
-    setPhase("watching");
-  };
-
   const simulateMatch=(roundIdx,matchIdx)=>{
-    const match=rounds[roundIdx][matchIdx];
+    const match=rounds[roundIdx]?.[matchIdx];
+    if(!match||!match.p1||!match.p2||match.winner)return;
     const winner=quickSimulate(match.p1,match.p2);
     const loser=match.p1.id===winner.id?match.p2:match.p1;
     // Update rounds
@@ -178,6 +137,7 @@ export default function TournamentMode({plants,onClose,onUpdatePlant,dark}){
         setCurrentRoundIdx(roundIdx);
         onUpdatePlant({...winner,wins:(winner.wins||0)+1});
         onUpdatePlant({...loser,losses:(loser.losses||0)+1});
+        if(onAchievement) onAchievement({wonTournament:true,playerWon:true,totalWins:0,rankReached:0});
         setPhase("complete");
         return;
       }
@@ -188,6 +148,7 @@ export default function TournamentMode({plants,onClose,onUpdatePlant,dark}){
       finalRounds=[...newRounds,nextRound];
     }
     setRounds(finalRounds);
+    // Always record — final match path has early return above, so no double-count
     onUpdatePlant({...winner,wins:(winner.wins||0)+1});
     onUpdatePlant({...loser,losses:(loser.losses||0)+1});
     // Advance current match pointer
@@ -309,7 +270,9 @@ export default function TournamentMode({plants,onClose,onUpdatePlant,dark}){
                 let r=[...rounds];let ri=currentRoundIdx;let mi=currentMatchIdx;
                 const winDelta={};const lossDelta={};
                 while(true){
-                  const match=r[ri][mi];
+                  const match=r[ri]?.[mi];
+                  if(!match||match.winner)break;
+                  if(!match.p1||!match.p2)break;
                   const winner=quickSimulate(match.p1,match.p2);
                   const loser=match.p1.id===winner.id?match.p2:match.p1;
                   r=r.map((round,rIdx)=>rIdx!==ri?round:round.map((m,mIdx)=>mIdx!==mi?m:{...m,winner}));
@@ -320,7 +283,7 @@ export default function TournamentMode({plants,onClose,onUpdatePlant,dark}){
                     const winners=r[ri].map(m=>m.winner);
                     if(winners.length===1){setChampion(winners[0]);setRounds(r);setPhase("complete");return;}
                     const nextRound=[];
-                    for(let i=0;i<winners.length;i+=2)if(winners[i+1])nextRound.push({p1:winners[i],p2:winners[i+1],winner:null});
+                    for(let i=0;i<winners.length-1;i+=2)nextRound.push({p1:winners[i],p2:winners[i+1],winner:null});
                     r=[...r,nextRound];ri++;mi=0;
                   }else{mi++;}
                   if(ri>=10)break;

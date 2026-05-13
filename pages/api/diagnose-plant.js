@@ -7,6 +7,7 @@ export default async function handler(req, res) {
 
   const { imageBase64, imageMime, plantName, plantSpecies } = req.body;
   if (!imageBase64 || !imageMime) return res.status(400).json({ error: "imageBase64 and imageMime are required" });
+  if (!process.env.ANTHROPIC_API_KEY) return res.status(500).json({ error: "ANTHROPIC_API_KEY is not configured on the server" });
 
   const context = plantName
     ? `This photo is of a ${plantName}${plantSpecies ? ` (${plantSpecies})` : ""}.`
@@ -50,7 +51,7 @@ Output raw JSON only.`;
         "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
+        model: "claude-sonnet-4-6",
         max_tokens: 1500,
         tools: [{ type: "web_search_20250305", name: "web_search" }],
         messages: [{
@@ -76,7 +77,13 @@ Output raw JSON only.`;
       .replace(/```json|```/g, "")
       .trim();
 
-    const diagnosis = JSON.parse(rawText);
+    let diagnosis;
+    try {
+      diagnosis = JSON.parse(rawText);
+    } catch (parseErr) {
+      console.error("Failed to parse diagnosis JSON:", rawText.slice(0, 200));
+      return res.status(500).json({ error: "Could not parse diagnosis response" });
+    }
     return res.status(200).json({ diagnosis });
 
   } catch (err) {

@@ -5,7 +5,7 @@
 
 import { useState } from "react";
 import { getBattleStats } from "./BattleSystem";
-import { getDailyState, completeDailyChallenge } from "../lib/dailyChallenge";
+import { getDailyState } from "../lib/dailyChallenge";
 import { ATTACKS } from "../lib/attacks";
 
 const RARITY_COLOR = { Common: "#78909c", Uncommon: "#43a047", Rare: "#1e88e5", Legendary: "#e65100" };
@@ -44,7 +44,7 @@ function FighterTile({ plant, selected, onClick, dark }) {
 }
 
 export default function DailyChallenge({ plants, onClose, onBattle, dark }) {
-  const dailyState = getDailyState(plants);
+  const [dailyState] = useState(() => getDailyState(plants));
   const opponent   = plants.find(p => p.id === dailyState?.opponentId) || plants[0];
   const [champion, setChampion] = useState(null);
 

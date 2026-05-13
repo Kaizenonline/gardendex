@@ -11,9 +11,9 @@ export const config = { api: { bodyParser: false } };
 
 async function getRawBody(req) {
   return new Promise((resolve, reject) => {
-    let data = "";
-    req.on("data", chunk => { data += chunk; });
-    req.on("end", () => resolve(Buffer.from(data)));
+    const chunks = [];
+    req.on("data", chunk => chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)));
+    req.on("end", () => resolve(Buffer.concat(chunks)));
     req.on("error", reject);
   });
 }

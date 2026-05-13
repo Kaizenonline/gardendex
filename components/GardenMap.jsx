@@ -3,7 +3,7 @@
 // Plants can be placed on named grid beds, moved between cells, and removed.
 // Beds are persisted in localStorage via the parent's beds/setBeds state.
 
-import { useState, useRef } from "react";
+import { useState, useEffect } from "react";
 
 const BED_COLORS = [
   { id: "earth",   bg: "#4e342e", light: "#efebe9", dark: "#1e1410", label: "Earth"   },
@@ -132,8 +132,8 @@ function BedGrid({ bed, plants, onDropPlant, onRemovePlant, onEditBed, onDeleteB
   const bg  = dark ? col.dark : col.light;
   const ts  = dark ? "#5a7a5a" : "#666";
 
-  const placedIds = new Set(Object.values(bed.cells));
-  const occupied  = (r, c) => bed.cells[`${r}-${c}`];
+  const placedIds = new Set(Object.values(bed.cells || {}));
+  const occupied  = (r, c) => (bed.cells || {})[`${r}-${c}`];
 
   const handleDrop = (e, row, col) => {
     e.preventDefault();
@@ -156,7 +156,7 @@ function BedGrid({ bed, plants, onDropPlant, onRemovePlant, onEditBed, onDeleteB
             <div style={{ width: 12, height: 12, borderRadius: 3, background: col.bg }} />
             <div>
               <div style={{ fontSize: 13, fontWeight: 700, color: dark ? "#d4ecd4" : "#1a1a1a" }}>{bed.name}</div>
-              <div style={{ fontSize: 10, color: ts }}>{bed.rows}×{bed.cols} · {Object.keys(bed.cells).length} plants</div>
+              <div style={{ fontSize: 10, color: ts }}>{bed.rows}×{bed.cols} · {Object.keys(bed.cells || {}).length} plants</div>
             </div>
           </div>
           <div style={{ display: "flex", gap: 5 }}>
@@ -176,9 +176,8 @@ function BedGrid({ bed, plants, onDropPlant, onRemovePlant, onEditBed, onDeleteB
               const plantId = occupied(r, c);
               const plant   = plantId ? plants.find(p => p.id === plantId) : null;
               // Auto-clean stale cell references (plant was deleted)
-              if (plantId && !plant) {
-                setTimeout(() => onRemovePlant(bed.id, cellKey), 0);
-              }
+              // Stale cell (plant deleted) — mark for cleanup, rendered as empty
+              // Cleanup handled by parent via useEffect in GardenMap
               const isOver  = dragOverCell === cellKey;
               const typeCol = plant ? (TYPE_THEMES[plant.type] || "#455a64") : null;
 
@@ -247,7 +246,7 @@ export default function GardenMap({ plants, beds, setBeds, onClose, dark }) {
 
   // Which plantIds are already placed on any bed
   const placedIds = new Set(
-    beds.flatMap(bed => Object.values(bed.cells))
+    beds.flatMap(bed => Object.values(bed.cells || {}))
   );
   const unplacedPlants = plants.filter(p => !placedIds.has(p.id));
 
@@ -269,7 +268,7 @@ export default function GardenMap({ plants, beds, setBeds, onClose, dark }) {
 
   const handleDropPlant = (toBedId, toCell, plantId, fromBedId, fromCell) => {
     setBeds(prev => prev.map(bed => {
-      let cells = { ...bed.cells };
+      let cells = { ...(bed.cells || {}) };
       // Remove from source bed
       if (fromBedId && bed.id === fromBedId && fromCell) {
         delete cells[fromCell];
@@ -284,10 +283,23 @@ export default function GardenMap({ plants, beds, setBeds, onClose, dark }) {
     }));
   };
 
+  // Clean up stale cell references when plants change
+  useEffect(() => {
+    const placedIds = new Set(plants.map(p => p.id));
+    setBeds(prev => prev.map(bed => {
+      const cells = { ...(bed.cells || {}) };
+      let changed = false;
+      Object.keys(cells).forEach(k => {
+        if (!placedIds.has(cells[k])) { delete cells[k]; changed = true; }
+      });
+      return changed ? { ...bed, cells } : bed;
+    }));
+  }, [plants]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleRemovePlant = (bedId, cell) => {
     setBeds(prev => prev.map(bed => {
       if (bed.id !== bedId) return bed;
-      const cells = { ...bed.cells };
+      const cells = { ...(bed.cells || {}) };
       delete cells[cell];
       return { ...bed, cells };
     }));

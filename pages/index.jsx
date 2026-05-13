@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import BattleSystem, { decodeChallengeLink, IncomingChallenge } from "../components/BattleSystem";
 import { RankBadgeCompact, RankModal, RankUpCelebration } from "../components/RankBadge";
-import { getTotalWins, getRank } from "../lib/ranks";
+import { getTotalWins } from "../lib/ranks";
 import { getHealthScore, getHealthLabel } from "../lib/health";
 import DiagnoseModal from "../components/DiagnoseModal";
 import GardenMap from "../components/GardenMap";
@@ -10,7 +10,7 @@ import TournamentMode from "../components/TournamentMode";
 import DailyChallenge from "../components/DailyChallenge";
 import HealthChart from "../components/HealthChart";
 import { checkAchievements, loadAchievements, saveAchievements, loadStreak, saveStreak, loadAllStatuses, saveAllStatuses, getEvolutionStage, EVOLUTION_CONFIG } from "../lib/achievements";
-import { getDailyState, completeDailyChallenge } from "../lib/dailyChallenge";
+import { completeDailyChallenge } from "../lib/dailyChallenge";
 
 const TYPE_THEMES = {
   Vegetable: { primary: "#2e7d32", light: "#e8f5e9", darkLight: "#1a2e1a", accent: "#81c784", text: "#1b5e20", icon: "🥦" },
@@ -37,18 +37,18 @@ const JOURNAL_TYPES = [
   { id: "note",    label: "Observation", emoji: "📝" },
 ];
 const SAMPLE_PLANTS = [
-  { id:"s1", name:"Cherry Tomato", species:"Solanum lycopersicum", type:"Vegetable", rarity:"Uncommon", emoji:"🍅", image:null, vigor:78, dateAdded:"2025-03-10", nextCareDate:null, journal:[], stats:{sunlight:88,water:62,difficulty:28}, details:{soilType:"Loamy, well-draining",pH:"6.2–6.8",harvestTime:"60–70 days",sunHours:"8+ hrs/day",spacing:'24"',funFact:"Botanically, tomatoes are both a fruit and a berry!",careNotes:"Water at soil level to prevent fungal disease."} },
-  { id:"s2", name:"Lemon Basil", species:"Ocimum × citriodorum", type:"Herb", rarity:"Rare", emoji:"🌿", image:null, vigor:65, dateAdded:"2025-03-22", nextCareDate:null, journal:[], stats:{sunlight:75,water:72,difficulty:38}, details:{soilType:"Rich, moist loam",pH:"6.0–7.0",harvestTime:"3–4 weeks",sunHours:"6–8 hrs/day",spacing:'12"',funFact:"Its citrus scent comes from a compound also found in lemon rind.",careNotes:"Pinch flower buds to keep leaf production going."} },
-  { id:"s3", name:"Giant Sunflower", species:"Helianthus annuus 'Titan'", type:"Flower", rarity:"Legendary", emoji:"🌻", image:null, vigor:95, dateAdded:"2025-02-14", nextCareDate:null, journal:[], stats:{sunlight:97,water:44,difficulty:15}, details:{soilType:"Sandy, well-draining",pH:"6.0–7.5",harvestTime:"80–100 days",sunHours:"6–8 hrs/day",spacing:'24"',funFact:"Young sunflowers track the sun as it moves!",careNotes:"Minimal watering once established. Stake tall varieties."} },
-  { id:"s4", name:"Strawberry", species:"Fragaria × ananassa", type:"Fruit", rarity:"Common", emoji:"🍓", image:null, vigor:70, dateAdded:"2025-04-01", nextCareDate:null, journal:[], stats:{sunlight:80,water:78,difficulty:42}, details:{soilType:"Sandy loam, acidic",pH:"5.5–6.5",harvestTime:"60–90 days",sunHours:"6–10 hrs/day",spacing:'18"',funFact:"Strawberries are the only fruit with seeds on the outside!",careNotes:"Remove runners to encourage larger fruits."} },
+  { id:"s1", name:"Cherry Tomato", species:"Solanum lycopersicum", type:"Vegetable", rarity:"Uncommon", emoji:"🍅", image:null, vigor:78, dateAdded:"2026-04-29", nextCareDate:null, journal:[], stats:{sunlight:88,water:62,difficulty:28}, details:{soilType:"Loamy, well-draining",pH:"6.2–6.8",harvestTime:"60–70 days",sunHours:"8+ hrs/day",spacing:'24"',funFact:"Botanically, tomatoes are both a fruit and a berry!",careNotes:"Water at soil level to prevent fungal disease."} },
+  { id:"s2", name:"Lemon Basil", species:"Ocimum × citriodorum", type:"Herb", rarity:"Rare", emoji:"🌿", image:null, vigor:65, dateAdded:"2026-05-06", nextCareDate:null, journal:[], stats:{sunlight:75,water:72,difficulty:38}, details:{soilType:"Rich, moist loam",pH:"6.0–7.0",harvestTime:"3–4 weeks",sunHours:"6–8 hrs/day",spacing:'12"',funFact:"Its citrus scent comes from a compound also found in lemon rind.",careNotes:"Pinch flower buds to keep leaf production going."} },
+  { id:"s3", name:"Giant Sunflower", species:"Helianthus annuus 'Titan'", type:"Flower", rarity:"Legendary", emoji:"🌻", image:null, vigor:95, dateAdded:"2026-04-22", nextCareDate:null, journal:[], stats:{sunlight:97,water:44,difficulty:15}, details:{soilType:"Sandy, well-draining",pH:"6.0–7.5",harvestTime:"80–100 days",sunHours:"6–8 hrs/day",spacing:'24"',funFact:"Young sunflowers track the sun as it moves!",careNotes:"Minimal watering once established. Stake tall varieties."} },
+  { id:"s4", name:"Strawberry", species:"Fragaria × ananassa", type:"Fruit", rarity:"Common", emoji:"🍓", image:null, vigor:70, dateAdded:"2026-05-09", nextCareDate:null, journal:[], stats:{sunlight:80,water:78,difficulty:42}, details:{soilType:"Sandy loam, acidic",pH:"5.5–6.5",harvestTime:"60–90 days",sunHours:"6–10 hrs/day",spacing:'18"',funFact:"Strawberries are the only fruit with seeds on the outside!",careNotes:"Remove runners to encourage larger fruits."} },
 ];
 
 function loadPlants() { try { const r=localStorage.getItem("gardendex_plants"); if(r) return JSON.parse(r); } catch{} return SAMPLE_PLANTS; }
 function savePlants(p) { try { localStorage.setItem("gardendex_plants",JSON.stringify(p)); } catch{} }
 function loadBeds() { try { const r=localStorage.getItem("gardendex_beds"); if(r) return JSON.parse(r); } catch{} return []; }
 function saveBeds(b) { try { localStorage.setItem("gardendex_beds",JSON.stringify(b)); } catch{} }
-function fmtDate(iso) { return new Date(iso).toLocaleString(undefined,{month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"}); }
-function fmtShort(iso) { return new Date(iso).toLocaleDateString(undefined,{month:"short",day:"numeric"}); }
+function fmtDate(iso) { if(!iso) return "—"; const d=new Date(iso); return isNaN(d)?iso:d.toLocaleString(undefined,{month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"}); }
+function fmtShort(iso) { if(!iso) return "—"; const d=new Date(iso); return isNaN(d)?"—":d.toLocaleDateString(undefined,{month:"short",day:"numeric"}); }
 function isOverdue(d) { return d && new Date(d)<new Date(); }
 function daysUntil(d) { if(!d) return null; return Math.ceil((new Date(d)-new Date())/(864e5)); }
 function plantAge(dateAdded) {
@@ -73,6 +73,7 @@ function compressImage(dataUrl, callback) {
     canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
     callback(canvas.toDataURL("image/jpeg", 0.72));
   };
+  img.onerror = () => callback(dataUrl); // fallback to original if compression fails
   img.src = dataUrl;
 }
 
@@ -151,9 +152,9 @@ function PlantCard({plant,onClick,dark}) {
         </div>
       </div>
       <div style={{padding:"8px 14px 4px"}}>
-        <StatBar label="Sun" value={plant.stats.sunlight} color="#f9a825" icon="☀" dark={dark}/>
-        <StatBar label="Water" value={plant.stats.water} color="#1e88e5" icon="💧" dark={dark}/>
-        <StatBar label="Difficulty" value={plant.stats.difficulty} color="#e53935" icon="⚠" dark={dark}/>
+        <StatBar label="Sun" value={plant.stats?.sunlight||0} color="#f9a825" icon="☀" dark={dark}/>
+        <StatBar label="Water" value={plant.stats?.water||0} color="#1e88e5" icon="💧" dark={dark}/>
+        <StatBar label="Difficulty" value={plant.stats?.difficulty||0} color="#e53935" icon="⚠" dark={dark}/>
       </div>
       {/* Health bar */}
       <div style={{padding:"0 14px 6px"}}>
@@ -174,46 +175,6 @@ function PlantCard({plant,onClick,dark}) {
     </div>
   );
 }
-  const theme=TYPE_THEMES[plant.type]||TYPE_THEMES.Other;
-  const rar=RARITY[plant.rarity]||RARITY.Common;
-  const [hovered,setHovered]=useState(false);
-  const overdue=isOverdue(plant.nextCareDate);
-  const days=daysUntil(plant.nextCareDate);
-  return (
-    <div onClick={()=>onClick(plant)} onMouseEnter={()=>setHovered(true)} onMouseLeave={()=>setHovered(false)} style={{width:210,borderRadius:18,overflow:"hidden",background:dark?"#1a2a1c":"#fffdf8",border:`2.5px solid ${overdue?"#e53935":rar.color}`,boxShadow:hovered?`0 10px 30px rgba(0,0,0,${dark?0.5:0.22}),${rar.glow}`:`0 3px 12px rgba(0,0,0,${dark?0.3:0.10}),${rar.glow}`,cursor:"pointer",transform:hovered?"translateY(-6px) rotate(-1.5deg) scale(1.03)":"none",transition:"all 0.25s cubic-bezier(.34,1.56,.64,1)",fontFamily:"system-ui,sans-serif",flexShrink:0}}>
-      <div style={{background:dark?`linear-gradient(135deg,${theme.darkLight},${theme.primary}30)`:`linear-gradient(135deg,${theme.light},${theme.primary}20)`,borderBottom:`2.5px solid ${theme.primary}40`,height:8}}/>
-      <div style={{height:140,background:dark?`linear-gradient(160deg,${theme.darkLight},${theme.primary}25)`:`linear-gradient(160deg,${theme.light},${theme.primary}15)`,display:"flex",alignItems:"center",justifyContent:"center",position:"relative",overflow:"hidden"}}>
-        {plant.image?<img src={plant.image} alt={plant.name} style={{width:"100%",height:"100%",objectFit:"cover"}}/>:<span style={{fontSize:72,filter:"drop-shadow(0 4px 8px rgba(0,0,0,0.2))",lineHeight:1}}>{plant.emoji||"🌱"}</span>}
-        <div style={{position:"absolute",top:10,left:10,background:theme.primary,color:"#fff",fontSize:9,fontWeight:800,padding:"3px 9px",borderRadius:20,textTransform:"uppercase",letterSpacing:"0.08em"}}>{theme.icon} {plant.type}</div>
-        <div style={{position:"absolute",bottom:10,right:10,background:"rgba(0,0,0,0.75)",color:"#ffd54f",fontSize:10,fontWeight:800,padding:"4px 10px",borderRadius:12}}>⚡ {plant.vigor}</div>
-        {overdue&&<div style={{position:"absolute",top:10,right:10,background:"#e53935",color:"#fff",fontSize:9,fontWeight:800,padding:"3px 8px",borderRadius:10}}>⚠ DUE</div>}
-        {!overdue&&days!==null&&days<=2&&<div style={{position:"absolute",top:10,right:10,background:"#f57c00",color:"#fff",fontSize:9,fontWeight:800,padding:"3px 8px",borderRadius:10}}>🔔 {days===0?"Today":`${days}d`}</div>}
-        {plant.journal?.length>0&&!overdue&&(days===null||days>2)&&<div style={{position:"absolute",bottom:10,left:10,background:"rgba(0,0,0,0.65)",color:"#81c784",fontSize:9,fontWeight:800,padding:"4px 8px",borderRadius:10}}>📓 {plant.journal.length}</div>}
-      </div>
-      <div style={{padding:"10px 14px 6px",borderBottom:`1px solid ${dark?"#2a3e2a":theme.light}`}}>
-        <div style={{fontSize:15,fontWeight:700,color:dark?"#d4ecd4":"#1a1a1a",lineHeight:1.1,marginBottom:2}}>{plant.name}</div>
-        <div style={{fontSize:10,color:dark?"#4a6a4a":"#888",fontStyle:"italic"}}>{plant.species}</div>
-      </div>
-      <div style={{padding:"10px 14px 8px"}}>
-        <StatBar label="Sun" value={plant.stats.sunlight} color="#f9a825" icon="☀" dark={dark}/>
-        <StatBar label="Water" value={plant.stats.water} color="#1e88e5" icon="💧" dark={dark}/>
-        <StatBar label="Difficulty" value={plant.stats.difficulty} color="#e53935" icon="⚠" dark={dark}/>
-      </div>
-      <div style={{padding:"8px 14px 12px",display:"flex",justifyContent:"space-between",alignItems:"center",borderTop:`1px dashed ${theme.primary}44`}}>
-        <span style={{fontSize:12,color:rar.color,letterSpacing:"2px"}}>{rar.stars}</span>
-        <div style={{display:"flex",gap:6,alignItems:"center"}}>
-          {((plant.wins||0)+(plant.losses||0))>0&&(
-            <span style={{fontSize:9,fontWeight:700,color:dark?"#5a7a5a":"#aaa"}}>
-              <span style={{color:"#43a047"}}>W{plant.wins||0}</span>
-              {" "}<span style={{color:"#e53935"}}>L{plant.losses||0}</span>
-            </span>
-          )}
-          <span style={{fontSize:9,color:dark?"#3a5a3a":"#aaa",fontWeight:600,textTransform:"uppercase",letterSpacing:"0.06em"}}>{plant.dateAdded}</span>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 function PlantDetail({plant,onClose,onDelete,onUpdate,dark}) {
   const [tab,setTab]=useState("overview");
@@ -225,8 +186,8 @@ function PlantDetail({plant,onClose,onDelete,onUpdate,dark}) {
   const [editName,setEditName]=useState(plant.name);
   const [editSpecies,setEditSpecies]=useState(plant.species);
   const [editEmoji,setEditEmoji]=useState(plant.emoji||"🌱");
-  const [editCareNotes,setEditCareNotes]=useState(plant.details.careNotes);
-  const [editFunFact,setEditFunFact]=useState(plant.details.funFact);
+  const [editCareNotes,setEditCareNotes]=useState(plant.details?.careNotes||"");
+  const [editFunFact,setEditFunFact]=useState(plant.details?.funFact||"");
   const [editNextCare,setEditNextCare]=useState(plant.nextCareDate?plant.nextCareDate.slice(0,10):"");
   if(!plant) return null;
   const theme=TYPE_THEMES[plant.type]||TYPE_THEMES.Other;
@@ -245,7 +206,7 @@ function PlantDetail({plant,onClose,onDelete,onUpdate,dark}) {
     setJournalInput("");
   };
   const saveEdit=()=>{
-    onUpdate({...plant,name:editName.trim()||plant.name,species:editSpecies.trim()||plant.species,emoji:editEmoji||plant.emoji,nextCareDate:editNextCare?new Date(editNextCare).toISOString():null,details:{...plant.details,careNotes:editCareNotes,funFact:editFunFact}});
+    onUpdate({...plant,name:editName.trim()||plant.name,species:editSpecies.trim()||plant.species,emoji:editEmoji||plant.emoji,nextCareDate:editNextCare?(editNextCare+"T12:00:00"):null,details:{...plant.details,careNotes:editCareNotes,funFact:editFunFact}});
     setTab("overview");
   };
   const handleShare=()=>{
@@ -294,12 +255,12 @@ function PlantDetail({plant,onClose,onDelete,onUpdate,dark}) {
             </div>
             <div style={{marginBottom:18}}>
               <div style={{fontSize:10,fontWeight:700,color:textSecondary,textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:10}}>Growth Stats</div>
-              <StatBar label="Sunlight" value={plant.stats.sunlight} color="#f9a825" icon="☀" dark={dark}/>
-              <StatBar label="Water Needs" value={plant.stats.water} color="#1e88e5" icon="💧" dark={dark}/>
-              <StatBar label="Difficulty" value={plant.stats.difficulty} color="#e53935" icon="⚠" dark={dark}/>
+              <StatBar label="Sunlight" value={plant.stats?.sunlight||0} color="#f9a825" icon="☀" dark={dark}/>
+              <StatBar label="Water Needs" value={plant.stats?.water||0} color="#1e88e5" icon="💧" dark={dark}/>
+              <StatBar label="Difficulty" value={plant.stats?.difficulty||0} color="#e53935" icon="⚠" dark={dark}/>
             </div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:16}}>
-              {[{label:"Soil Type",value:plant.details.soilType,icon:"🪱"},{label:"pH Range",value:plant.details.pH,icon:"⚗️"},{label:"Harvest Time",value:plant.details.harvestTime,icon:"🗓️"},{label:"Sun Hours",value:plant.details.sunHours,icon:"☀️"},{label:"Spacing",value:plant.details.spacing,icon:"📐"},{label:"Rarity",value:rar.stars,icon:""}].map(({label,value,icon})=>(
+              {[{label:"Soil Type",value:plant.details?.soilType||"—",icon:"🪱"},{label:"pH Range",value:plant.details?.pH||"—",icon:"⚗️"},{label:"Harvest Time",value:plant.details?.harvestTime||"—",icon:"🗓️"},{label:"Sun Hours",value:plant.details?.sunHours||"—",icon:"☀️"},{label:"Spacing",value:plant.details?.spacing||"—",icon:"📐"},{label:"Rarity",value:rar.stars,icon:""}].map(({label,value,icon})=>(
                 <div key={label} style={{background:dark?theme.darkLight:theme.light,borderRadius:10,padding:"9px 11px",border:`1px solid ${theme.primary}${dark?"44":"22"}`}}>
                   <div style={{fontSize:9,color:dark?theme.accent:theme.text,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.06em",marginBottom:3}}>{icon} {label}</div>
                   <div style={{fontSize:12,fontWeight:600,color:dark?"#c8e4c8":"#2a2a2a"}}>{value}</div>
@@ -308,11 +269,11 @@ function PlantDetail({plant,onClose,onDelete,onUpdate,dark}) {
             </div>
             <div style={{background:dark?"#1e1a08":"#fffbe6",border:`1.5px solid ${dark?"#4a3a00":"#ffe082"}`,borderRadius:10,padding:"12px 14px",marginBottom:12}}>
               <div style={{fontSize:10,fontWeight:700,color:dark?"#c8a020":"#f57f17",textTransform:"uppercase",letterSpacing:"0.07em",marginBottom:5}}>🌟 Fun Fact</div>
-              <div style={{fontSize:12,color:dark?"#c8b86a":"#5d4037",lineHeight:1.6}}>{plant.details.funFact}</div>
+              <div style={{fontSize:12,color:dark?"#c8b86a":"#5d4037",lineHeight:1.6}}>{plant.details?.funFact||"No fun fact available."}</div>
             </div>
             <div style={{background:dark?theme.darkLight:theme.light,border:`1.5px solid ${theme.primary}${dark?"55":"33"}`,borderRadius:10,padding:"12px 14px",marginBottom:16}}>
               <div style={{fontSize:10,fontWeight:700,color:dark?theme.accent:theme.text,textTransform:"uppercase",letterSpacing:"0.07em",marginBottom:5}}>🌿 Care Note</div>
-              <div style={{fontSize:12,color:dark?"#a8c8a8":"#333",lineHeight:1.6}}>{plant.details.careNotes}</div>
+              <div style={{fontSize:12,color:dark?"#a8c8a8":"#333",lineHeight:1.6}}>{plant.details?.careNotes||"No care notes available."}</div>
             </div>
 
             {/* Battle record */}
@@ -433,7 +394,7 @@ function PlantDetail({plant,onClose,onDelete,onUpdate,dark}) {
               ))}
               <div style={{display:"flex",gap:10,marginTop:4}}>
                 <button onClick={saveEdit} style={{flex:1,padding:"11px 0",background:`linear-gradient(135deg,${theme.primary},${theme.primary}88)`,border:"none",borderRadius:10,color:"#fff",fontSize:13,fontWeight:700,cursor:"pointer"}}>✓ Save Changes</button>
-                <button onClick={()=>{setEditName(plant.name);setEditSpecies(plant.species);setEditEmoji(plant.emoji);setEditCareNotes(plant.details.careNotes);setEditFunFact(plant.details.funFact);setEditNextCare(plant.nextCareDate?plant.nextCareDate.slice(0,10):"");setTab("overview");}} style={{padding:"11px 16px",background:dark?"#1e2e1e":"#f0f0f0",border:`1px solid ${borderColor}`,borderRadius:10,color:textSecondary,fontSize:13,cursor:"pointer"}}>Cancel</button>
+                <button onClick={()=>{setEditName(plant.name);setEditSpecies(plant.species);setEditEmoji(plant.emoji);setEditCareNotes(plant.details?.careNotes||"");setEditFunFact(plant.details?.funFact||"");setEditNextCare(plant.nextCareDate?plant.nextCareDate.slice(0,10):"");setTab("overview");}} style={{padding:"11px 16px",background:dark?"#1e2e1e":"#f0f0f0",border:`1px solid ${borderColor}`,borderRadius:10,color:textSecondary,fontSize:13,cursor:"pointer"}}>Cancel</button>
               </div>
             </div>
           </>}
@@ -581,8 +542,8 @@ export default function GardenTracker() {
   const types=["All",...Object.keys(TYPE_THEMES)];
   const overdueCount=plants.filter(p=>isOverdue(p.nextCareDate)).length;
   const handleAdd=p=>{setPlants(prev=>[p,...prev]);setShowAdd(false);setSelectedPlant(p);};
-  const handleDelete=id=>{setPlants(prev=>prev.filter(p=>p.id!==id));};
-  const handleUpdate=u=>{setPlants(prev=>prev.map(p=>p.id===u.id?u:p));setSelectedPlant(u);};
+  const handleDelete=id=>{setPlants(prev=>prev.filter(p=>p.id!==id));if(selectedPlant?.id===id)setSelectedPlant(null);};
+  const handleUpdate=u=>{setPlants(prev=>prev.map(p=>p.id===u.id?u:p));setSelectedPlant(prev=>prev?.id===u.id?u:prev);};
 
   const handleAchievement=useCallback((ctx)=>{
     // Update streak
@@ -612,8 +573,7 @@ export default function GardenTracker() {
     }
   },[streak,allStatuses,achievements]);
   const totalWins=getTotalWins(plants);
-  const currentRank=getRank(totalWins);
-  const placedInBeds=new Set(beds.flatMap(b=>Object.values(b.cells))).size;
+  const placedInBeds=new Set(beds.flatMap(b=>Object.values(b.cells||{}))).size;
 
   const allTypes=Object.keys(TYPE_THEMES);
   const ownedTypes=new Set(plants.map(p=>p.type));
@@ -723,54 +683,6 @@ export default function GardenTracker() {
       </div>
       {selectedPlant&&<PlantDetail plant={plants.find(p=>p.id===selectedPlant.id)||selectedPlant} onClose={()=>setSelectedPlant(null)} onDelete={handleDelete} onUpdate={handleUpdate} dark={dark}/>}
       {showAdd&&<AddPlantModal onClose={()=>setShowAdd(false)} onAdd={handleAdd} dark={dark} existingPlants={plants}/>}
-
-
-  return (
-    <div style={{minHeight:"100vh",background:dark?"linear-gradient(160deg,#0a140a,#0d180d,#0a140a)":"linear-gradient(160deg,#f0f7f0,#fdf6e8,#f0f7f0)",fontFamily:"system-ui,-apple-system,sans-serif",transition:"background 0.35s"}}>
-      {overdueCount>0&&<div style={{background:"#e53935",padding:"10px 32px",display:"flex",justifyContent:"center",alignItems:"center"}}><span style={{color:"#fff",fontSize:13,fontWeight:700}}>⚠ {overdueCount} plant{overdueCount>1?"s":""} overdue for care</span></div>}
-      <div style={{background:dark?"linear-gradient(135deg,#0d1f0d,#162816,#0f200f)":"linear-gradient(135deg,#1b5e20,#2e7d32,#33691e)",padding:"22px 32px 26px",boxShadow:dark?"0 4px 24px rgba(0,0,0,0.55)":"0 4px 20px rgba(0,0,0,0.15)",borderBottom:dark?"1px solid #1e3a1e":"none",transition:"background 0.35s"}}>
-        <div style={{maxWidth:1100,margin:"0 auto"}}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:12}}>
-            <div>
-              <h1 style={{margin:0,fontSize:26,fontWeight:900,color:"#fff",letterSpacing:"-0.02em"}}>🌿 GardenDex</h1>
-              <p style={{margin:"3px 0 0",fontSize:12,color:"rgba(255,255,255,0.6)"}}>Your personal plant collection & garden tracker</p>
-            </div>
-            <div style={{display:"flex",flexDirection:"column",alignItems:"stretch",gap:7,minWidth:148}}>
-              <button onClick={()=>setShowAdd(true)} style={{background:"#ffd54f",border:"none",borderRadius:11,padding:"10px 18px",fontSize:13,fontWeight:800,cursor:"pointer",color:"#1b5e20",boxShadow:"0 4px 12px rgba(0,0,0,0.2)",display:"flex",alignItems:"center",justifyContent:"center",gap:7,transition:"transform 0.15s"}} onMouseEnter={e=>e.currentTarget.style.transform="scale(1.04)"} onMouseLeave={e=>e.currentTarget.style.transform="scale(1)"}>📷 Add Plant</button>
-              <button onClick={()=>setDark(d=>!d)} style={{background:dark?"rgba(255,255,255,0.13)":"rgba(0,0,0,0.22)",border:"1.5px solid rgba(255,255,255,0.27)",borderRadius:11,padding:"8px 18px",cursor:"pointer",color:"#fff",fontSize:12,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",gap:7,transition:"all 0.2s"}} onMouseEnter={e=>e.currentTarget.style.transform="scale(1.04)"} onMouseLeave={e=>e.currentTarget.style.transform="scale(1)"}>{dark?"☀️ Light Mode":"🌙 Dark Mode"}</button>
-              <RankBadgeCompact totalWins={totalWins} dark={dark} onClick={()=>setShowRankModal(true)}/>
-              <button onClick={()=>setShowBattle(true)} disabled={plants.length<2} style={{background:plants.length>=2?"linear-gradient(135deg,#c62828,#b71c1c)":"rgba(0,0,0,0.15)",border:"1.5px solid rgba(255,255,255,0.2)",borderRadius:11,padding:"8px 18px",cursor:plants.length>=2?"pointer":"not-allowed",color:plants.length>=2?"#fff":"rgba(255,255,255,0.35)",fontSize:12,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",gap:7,transition:"all 0.2s"}} onMouseEnter={e=>{if(plants.length>=2)e.currentTarget.style.transform="scale(1.04)";}} onMouseLeave={e=>e.currentTarget.style.transform="scale(1)"}>⚔️ Battle</button>
-            </div>
-          </div>
-          <div style={{display:"flex",gap:12,marginTop:18,flexWrap:"wrap"}}>
-            {[{label:"Plants",value:stats.total,icon:"🌱"},{label:"Types",value:stats.types,icon:"🏷️"},{label:"Rare",value:stats.rare,icon:"🔵"},{label:"Legendary",value:stats.legendary,icon:"🌟"},{label:"Wins",value:stats.wins,icon:"⚔️"},{label:"Losses",value:stats.losses,icon:"💀"},...(overdueCount?[{label:"Care Due",value:overdueCount,icon:"⚠️"}]:[])].map(({label,value,icon})=>(
-              <div key={label} style={{background:label==="Care Due"?"rgba(229,57,53,0.3)":"rgba(255,255,255,0.10)",borderRadius:10,padding:"9px 14px",border:`1px solid ${label==="Care Due"?"rgba(229,57,53,0.5)":"rgba(255,255,255,0.18)"}`}}>
-                <div style={{fontSize:16,fontWeight:800,color:"#ffd54f"}}>{icon} {value}</div>
-                <div style={{fontSize:9,color:"rgba(255,255,255,0.6)",textTransform:"uppercase",letterSpacing:"0.07em",marginTop:2}}>{label}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-      <div style={{maxWidth:1100,margin:"0 auto",padding:"18px 32px 0"}}>
-        <div style={{display:"flex",gap:10,flexWrap:"wrap",alignItems:"center"}}>
-          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="🔍 Search plants..." style={{padding:"8px 14px",borderRadius:10,border:`1.5px solid ${dark?"#2a3e2a":"#c8e6c9"}`,fontSize:13,background:dark?"#141f14":"#fff",color:dark?"#c8e4c8":"#333",outline:"none",width:190}}/>
-          <div style={{display:"flex",gap:7,flexWrap:"wrap"}}>
-            {types.map(t=><button key={t} onClick={()=>setFilter(t)} style={{padding:"6px 12px",borderRadius:18,border:`1.5px solid ${filter===t?"#2e7d32":(dark?"#2a3e2a":"#c8e6c9")}`,background:filter===t?"#2e7d32":(dark?"#141f14":"#fff"),color:filter===t?"#fff":(dark?"#7aaa7a":"#555"),fontSize:11,fontWeight:600,cursor:"pointer",transition:"all 0.15s"}}>{t==="All"?"All":`${TYPE_THEMES[t]?.icon} ${t}`}</button>)}
-          </div>
-        </div>
-      </div>
-      <div style={{maxWidth:1100,margin:"0 auto",padding:"22px 32px 48px"}}>
-        {filtered.length===0?(
-          <div style={{textAlign:"center",padding:"56px 20px",color:dark?"#3a5a3a":"#888",fontSize:14}}><div style={{fontSize:44,marginBottom:10}}>🌾</div>No plants found. Add your first one!</div>
-        ):(
-          <div style={{display:"flex",flexWrap:"wrap",gap:20}}>
-            {filtered.map(plant=><PlantCard key={plant.id} plant={plant} onClick={setSelectedPlant} dark={dark}/>)}
-          </div>
-        )}
-      </div>
-      {selectedPlant&&<PlantDetail plant={plants.find(p=>p.id===selectedPlant.id)||selectedPlant} onClose={()=>setSelectedPlant(null)} onDelete={handleDelete} onUpdate={handleUpdate} dark={dark}/>}
-      {showAdd&&<AddPlantModal onClose={()=>setShowAdd(false)} onAdd={handleAdd} dark={dark}/>}
       {showBattle&&<BattleSystem
         plants={plants}
         onUpdatePlant={handleUpdate}
@@ -782,8 +694,8 @@ export default function GardenTracker() {
         onAchievement={handleAchievement}
         onBattleEnd={(playerWon)=>{
           if(dailyBattlePreset){
-            const updated=completeDailyChallenge(dailyBattlePreset.dailyState,playerWon);
-            setStreak(updated.streak);
+            completeDailyChallenge(dailyBattlePreset.dailyState,playerWon);
+            // streak is updated by handleAchievement - don't double-update here
             setDailyBattlePreset(null);
             setShowDaily(true); // show result screen
           }
@@ -793,7 +705,7 @@ export default function GardenTracker() {
       {rankUpData&&<RankUpCelebration newRank={rankUpData} dark={dark} onClose={()=>setRankUpData(null)}/>}
       {showMap&&<GardenMap plants={plants} beds={beds} setBeds={setBeds} onClose={()=>setShowMap(false)} dark={dark}/>}
       {showAchievements&&<AchievementsModal unlocked={achievements} onClose={()=>setShowAchievements(false)} dark={dark}/>}
-      {showTournament&&<TournamentMode plants={plants} onClose={()=>setShowTournament(false)} onUpdatePlant={handleUpdate} dark={dark}/>}
+      {showTournament&&<TournamentMode plants={plants} onClose={()=>setShowTournament(false)} onUpdatePlant={handleUpdate} onAchievement={handleAchievement} dark={dark}/>}
       {toastAch&&<AchievementToast achievement={toastAch} onDone={()=>setToastAch(null)}/>}
       {showDaily&&!dailyBattlePreset&&(
         <DailyChallenge
